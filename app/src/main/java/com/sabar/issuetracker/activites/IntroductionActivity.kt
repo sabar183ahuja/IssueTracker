@@ -1,8 +1,9 @@
-package com.sabar.issuetracker
+package com.sabar.issuetracker.activites
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import com.sabar.issuetracker.R
 import kotlinx.android.synthetic.main.activity_introduction.*
 
 class IntroductionActivity : AppCompatActivity() {
