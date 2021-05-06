@@ -63,8 +63,8 @@ class SignInActivity : BaseActivity() {
             FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        // Calling the FirestoreClass signInUser function to get the data of user from database.
-                        FirestoreClass().signInUser(this)
+                        // Calling the FirestoreClass  function to get the data of user from database.
+                        FirestoreClass().loadUserData(this)
                         // END
                     } else {
                         Toast.makeText(
