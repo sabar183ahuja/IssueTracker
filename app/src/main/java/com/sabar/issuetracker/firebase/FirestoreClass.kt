@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.sabar.issuetracker.activites.*
+import com.sabar.issuetracker.model.Board
 import com.sabar.issuetracker.model.User
 import com.sabar.issuetracker.utils.Constants
 
@@ -36,7 +37,7 @@ class FirestoreClass {
             }
     }
 
-    fun loadUserData(activity: BaseActivity) {
+    fun loadUserData(activity: BaseActivity,isToReadBoardsList: Boolean = false) {
 
         // Here we pass the collection name from which we wants the data.
         mFireStore.collection(Constants.USERS)
@@ -56,7 +57,7 @@ class FirestoreClass {
                         activity.signInSuccess(loggedInUser)
                     }
                     is MainActivity -> {
-                        activity.updateNavUserDetails(loggedInUser)
+                        activity.updateNavUserDetails(loggedInUser,isToReadBoardsList)
                     }
                     is MyProfileActivity -> {
                         activity.setUserDataInUI(loggedInUser)
@@ -84,6 +85,7 @@ class FirestoreClass {
                 Toast.makeText(activity, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
 
                 activity.profileUpdateSuccess()
+                requestCompleted(activity)
             }
             .addOnFailureListener { e ->
                 activity.hideProgressDialog()
@@ -108,6 +110,59 @@ class FirestoreClass {
         return currentUserID
     }
 
+    fun createBoard(activity: CreateBoardActivity, board: Board) {
+
+        mFireStore.collection(Constants.BOARDS)
+            .document()
+            .set(board, SetOptions.merge())
+            .addOnSuccessListener {
+                Log.e(activity.javaClass.simpleName, "Board created successfully.")
+
+                Toast.makeText(activity, "Board created successfully.", Toast.LENGTH_SHORT).show()
+
+                activity.boardCreatedSuccessfully()
+
+            }
+            .addOnFailureListener { e ->
+                activity.hideProgressDialog()
+                Log.e(
+                    activity.javaClass.simpleName,
+                    "Error while creating a board.",
+                    e
+                )
+            }
+    }
+
+    fun getBoardsList(activity: MainActivity) {
+        mFireStore.collection(Constants.BOARDS)
+            .whereArrayContains(Constants.ASSIGNED_TO,getCurrentUserID())
+            .get()
+            .addOnSuccessListener {
+                document->
+                Log.d(activity.javaClass.simpleName, document.documents.toString())
+                val boardsList: ArrayList<Board> = ArrayList()
+
+                // A for loop as per the list of documents to convert them into Boards ArrayList.
+                for (i in document.documents) {
+
+                    val board = i.toObject(Board::class.java)!!
+                    board.documentId = i.id
+
+                    boardsList.add(board)
+                }
+                activity.populateBoardsListToUI(boardsList)
+            }
+            .addOnFailureListener { e ->
+
+                activity.hideProgressDialog()
+                Log.e(activity.javaClass.simpleName, "Error while creating a board.", e)
+            }
+    }
+
+    fun requestCompleted(activity: BaseActivity){
+        activity.hideProgressDialog()
+        activity.finish()
+    }
     companion object{
         const val TAG ="FiresStoreClass"
     }

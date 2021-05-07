@@ -5,27 +5,41 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.sabar.issuetracker.R
+import com.sabar.issuetracker.adapters.BoardItemsAdapter
 import com.sabar.issuetracker.firebase.FirestoreClass
+import com.sabar.issuetracker.model.Board
 import com.sabar.issuetracker.model.User
+import com.sabar.issuetracker.utils.Constants
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.app_bar_main.*
+import kotlinx.android.synthetic.main.content_main.*
 
 class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedListener {
+
+    private lateinit var mUserName: String
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setupActionBar()
 
         nav_view.setNavigationItemSelectedListener(this)
-        FirestoreClass().loadUserData(this)
+        FirestoreClass().loadUserData(this,true)
+
+        fab_add_board.setOnClickListener{
+            val intent = Intent(this,CreateBoardActivity::class.java)
+            intent.putExtra(Constants.NAME,mUserName)
+            startActivityForResult(intent, CREATE_BOARD_REQUEST)
+        }
     }
     override fun onBackPressed() {
         if (drawer_layout.isDrawerOpen(GravityCompat.START)) {
@@ -77,8 +91,9 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         }
     }
 
-    fun updateNavUserDetails(user: User) {
+    fun updateNavUserDetails(user: User, readBoardsList:Boolean) {
 
+        mUserName = user.name
         val headerView = nav_view.getHeaderView(0)
 
         // The instance of the user image of the navigation view.
@@ -93,6 +108,11 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
         val navUsername = headerView.findViewById<TextView>(R.id.tv_username)
         navUsername.text = user.name
+
+        if(readBoardsList) {
+            showProgressDialog(getString(R.string.please_wait))
+            FirestoreClass().getBoardsList(this)
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -102,13 +122,44 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
             && requestCode == MY_PROFILE_REQUEST_CODE
         ) {
             FirestoreClass().loadUserData(this)
-        } else {
+        } else if(resultCode == Activity.RESULT_OK
+            && requestCode == CREATE_BOARD_REQUEST){
+            FirestoreClass().getBoardsList(this)
+        }
+        else{
             Log.d("Cancelled", "Cancelled")
+        }
+    }
+
+    fun populateBoardsListToUI(boardsList: ArrayList<Board>) {
+
+        hideProgressDialog()
+
+        if (boardsList.size > 0) {
+
+            rv_boards_list.visibility = View.VISIBLE
+            tv_no_boards_available.visibility = View.GONE
+
+            rv_boards_list.layoutManager = LinearLayoutManager(this)
+            rv_boards_list.setHasFixedSize(true)
+
+            val adapter = BoardItemsAdapter(this, boardsList)
+            adapter.setOnClickListener(object: BoardItemsAdapter.OnClickListener{
+                override fun onClick(position: Int, model: Board) {
+                    startActivity(Intent(this@MainActivity,TaskListActivity::class.java) )
+                }
+
+            })
+            rv_boards_list.adapter = adapter
+        } else {
+            rv_boards_list.visibility = View.GONE
+            tv_no_boards_available.visibility = View.VISIBLE
         }
     }
 
     companion object {
         const val MY_PROFILE_REQUEST_CODE: Int = 11
+        const val CREATE_BOARD_REQUEST: Int = 12
     }
 
 }
